@@ -167,6 +167,87 @@ Threshold for correlations.
 ### min_amplitude: float=None
 Minimum amplitude.
 
+### batch_size: int=512
+Batch size for GPU memory control. Smaller values reduce GPU memory usage. Default: 512. For low GPU memory, try 256 or 128.
+
+## GPUメモリ削減パッチについて
+
+このプロジェクトでは、DARTsortにGPUメモリ削減のためのパッチを適用しています。
+
+### パッチが残る理由
+
+`.venv/Lib/site-packages/dartsort/`内のファイルを直接編集しているため、GitHubから再インストールしても変更が残ります。これは以下の理由によるものです：
+
+1. **pip/uvのキャッシュ**: 同じコミットハッシュのパッケージがキャッシュから再利用される
+2. **ファイルが完全に削除されない**: 再インストール時に既存ファイルが残る場合がある
+
+### パッチを再適用する方法
+
+再インストール後、パッチを再適用するには：
+
+```bash
+python apply_dartsort_patches.py
+```
+
+または、手動で以下のコマンドを実行してキャッシュをクリアして再インストール：
+
+```bash
+# キャッシュをクリアして再インストール
+uv pip uninstall dartsort
+uv pip cache purge
+uv pip install git+https://github.com/cwindolf/dartsort.git@213c328e605fc063bd2d9bf37220d3ec196aa8fc
+
+# パッチを適用
+python apply_dartsort_patches.py
+```
+
+### パッチの内容
+
+1. `batch_size`パラメータの追加（`config.py`, `internal_config.py`）
+2. GPUメモリチェックとCPUフォールバック機能（`truncated_mixture.py`）
+3. バッチサイズの制御機能（`gaussian_mixture.py`, `refine.py`）
+
+## メモリ使用パターンについて
+
+**重要な観察**: DARTsortは中間ファイルを生成せず、**GPUメモリ上に常に情報を保持**する設計です。
+
+### 実装済みのメモリ削減策
+
+1. **features.clone()の削除**: メモリ使用量を約0.5-1 GiB削減
+2. **特徴量をCPUに保持**: `store_on_device=False`をデフォルト設定で特徴量をCPUに保持し、必要時のみGPUに転送
+3. **大きなバッファのディスクキャッシュ**: GPUメモリ不足時に自動的にバッファをディスクに保存（処理速度は低下するがメモリ使用量が大幅に削減）
+4. **CPUフォールバック機能の削除**: GPU上で処理を完了させる（ユーザー要望）
+5. **メモリ使用量の警告**: メモリ不足の可能性を事前に警告
+
+### メモリ削減の推奨設定（処理完了優先）
+
+**重要**: CPUフォールバックは無効化されています。GPU上で処理を完了させるため、メモリ削減が最優先です。
+
+```python
+params = ss.DARTsortSorter.default_params()
+
+# GPUメモリ削減設定（デフォルトも改善済み）
+params['batch_size'] = 128  # デフォルト256、さらに小さい値（64も可）
+params['gmm_max_spikes'] = 500000  # デフォルト4,000,000より小さい値
+params['n_refinement_iters'] = 1  # refinementの反復回数を減らす
+
+# さらなるメモリ削減が必要な場合
+params['batch_size'] = 64
+params['gmm_max_spikes'] = 250000
+```
+
+詳細は `MEMORY_ANALYSIS.md`、`README_DISK_CACHE.md`、および `DISK_CACHE_SETTINGS.md` を参照してください。
+
+## 中間ファイル生成方式（ディスクキャッシュ）の使用方法
+
+ディスクキャッシュは**自動的に有効化**されます。明示的な設定は不要です。
+
+- **自動有効化**: GPUメモリの利用可能量の60%を超えるメモリが必要と推定された場合、自動的に有効化されます
+- **動作**: 大きなバッファがディスクに保存され、GPUメモリ不足を回避します
+- **処理速度**: ディスクI/Oのため処理速度は低下しますが、処理を完了できます
+
+詳細は `DISK_CACHE_SETTINGS.md` を参照してください。
+
 ## DeveloperConfig:
 
 @dataclass(frozen=True, kw_only=True, config=_strict_config)

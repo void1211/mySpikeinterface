@@ -1,10 +1,25 @@
 [project]
-name = "spikeinterface"
+name = "myspikeinterface"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "cellactivityrecodingsimulator",
+    "ipykernel>=7.1.0",
     "ipywidgets>=8.1.7",
     "jupyter>=1.1.1",
+    "matplotlib>=3.10.7",
+    "numpy>=2.2.6",
+    "pandas>=2.3.3",
+    "probeinterface>=0.3.1",
+    "spikeinterface",
 ]
+
+[tool.uv.sources]
+spikeinterface = { git = "https://github.com/void1211/spikeinterface.git" }
+cellactivityrecodingsimulator = { git = "https://github.com/void1211/CellActivityRecordingSimulator.git" }
+
+# Windows では pyqt5-qt5 に wheel がないため除外し、PyQt5 を利用する
+[tool.uv]
+exclude-dependencies = ["pyqt5-qt5"]
