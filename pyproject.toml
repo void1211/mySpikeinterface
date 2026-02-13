@@ -3,23 +3,55 @@ name = "myspikeinterface"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "cellactivityrecodingsimulator",
+    "h5py",
     "ipykernel>=7.1.0",
     "ipywidgets>=8.1.7",
     "jupyter>=1.1.1",
+    "kilosort",
+    "linear_operator",
     "matplotlib>=3.10.7",
+    "numba",
+    "opt-einsum",
+    "packaging",
+    "pydantic",
+    "scipy>=1.13",
+    "scikit-learn",
+    "torch",
+    "tqdm",
     "numpy>=2.2.6",
     "pandas>=2.3.3",
     "probeinterface>=0.3.1",
     "spikeinterface",
 ]
 
-[tool.uv.sources]
-spikeinterface = { git = "https://github.com/void1211/spikeinterface.git" }
-cellactivityrecodingsimulator = { git = "https://github.com/void1211/CellActivityRecordingSimulator.git" }
+[project.optional-dependencies]
+# DARTsort を使う場合。dartsort の pyproject.toml / environment.yml に合わせて上記に linear_operator 等を追加済み。
+# Linux: uv sync --extra dartsort でよい。
+# Windows: extra には入れていない（cupy のソースビルドが走るため）。次の順で手動インストール:
+#   uv pip install cupy-cuda12x
+#   uv pip install "dartsort @ git+https://github.com/void1211/dartsort.git" --no-deps
+dartsort = [
+    "dartsort; sys_platform != 'win32'",
+    "cupy-cuda12x; sys_platform == 'linux'",
+]
 
-# Windows では pyqt5-qt5 に wheel がないため除外し、PyQt5 を利用する
-[tool.uv]
-exclude-dependencies = ["pyqt5-qt5"]
+[tool.uv.sources]
+# ローカルで修正した spikeinterface を使う場合（yasui/spikeinterface を編集したとき）:
+spikeinterface = { path = "../spikeinterface" }
+# spikeinterface = { git = "https://github.com/void1211/spikeinterface.git" }
+dartsort = { git = "https://github.com/void1211/dartsort.git" }
+dredge = {git = "https://github.com/evarol/dredge.git"}
+cellactivityrecodingsimulator = { git = "https://github.com/void1211/CellActivityRecordingSimulator.git" }
+# PyTorch CUDA 12.8（Windows/Linux のみ。macOS は PyPI の CPU 版にフォールバック）
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+# Windows で pyqt5-qt5 が問題になる場合は、override-dependencies 等で対応可能（要・uv のバージョン確認）
