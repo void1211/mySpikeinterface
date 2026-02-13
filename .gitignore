@@ -1,9 +1,6 @@
 
 
-default/
-ex*_condition*/
-preprocessed_ap_only/
-recording_ap_only/
-recording_with_sync/
-
 in_container_*
+
+main_sorting.ipynb
+tutrial*.ipynb
